@@ -2,7 +2,8 @@
 require 'optparse'
 require 'date'
 
-option = {}
+current_date = Date.today
+option = { m: current_date.month, y: current_date.year }
 
 opt = OptionParser.new
 
@@ -28,8 +29,8 @@ end
 
 opt.parse!(ARGV)
 
-month = option[:m] || Date.today.month
-year = option[:y] || Date.today.year
+month = option[:m]
+year = option[:y]
 
 first_day = Date.new(year, month, 1)
 last_day = Date.new(year, month, -1)
