@@ -32,17 +32,17 @@ opt.parse!(ARGV)
 month = option[:m]
 year = option[:y]
 
-first_day = Date.new(year, month, 1)
-last_day = Date.new(year, month, -1)
+first_date = Date.new(year, month, 1)
+last_date = Date.new(year, month, -1)
 
 puts "     #{month}月 #{year}"
 puts "日 月 火 水 木 金 土"
 
-print "   " * first_day.wday
+print "   " * first_date.wday
 
-(first_day..last_day).each do |date|
-  print date.day.to_s.rjust(2) + " "
-  print "\n" if date.saturday?
+(first_date..last_date).each do |current_date|
+  print current_date.day.to_s.rjust(2) + " "
+  print "\n" if current_date.saturday?
 end
 
 print "\n\n"
