@@ -7,48 +7,54 @@ shots = []
 
 # ストライクは "X"、他は数字として扱う
 scores.each do |s|
-  if s == 'X'
-    shots << 10
-  else
-    shots << s.to_i
+  shots << (s == 'X' ? 10 : s.to_i)
+end
+
+# 各フレームに分割（10フレーム目の特別処理を除く）
+frames = []
+i = 0
+while i < shots.size
+  if frames.size < 9 # 10フレーム目以外
+    if shots[i] == 10 # ストライクの場合は1投だけのフレーム
+      frames << [shots[i]]
+      i += 1
+    else
+      frames << shots[i, 2] # 通常のフレームは2投で構成
+      i += 2
+    end
+  else # 10フレーム目の処理
+    frames << shots[i..-1] # 残りの投球をすべて10フレーム目として扱う
+    break
   end
 end
 
-# 各フレームに分割
-frames = []
-shots.each_slice(2) do |s|
-  frames << s
-end
-
-
-# 10フレーム目の処理では3投目が存在する場合があるため特別に処理
-if frames.length > 10
-  frames[9] += frames[10] # 10フレーム目に3投がある場合、それを追加
-  frames.pop # 余分なフレームを削除
-end
-
-# 次のショットを取得する関数
+# 次のショットを取得する関数を共通化（フレームの枠内から必要な投数を取得）
 def next_shots(frames, index, count)
-  next_frame = frames[index + 1]&.flatten || []
-  next_frame[0...count]
+  following_frames = frames[index + 1..-1].flatten || []
+  following_frames[0, count]
 end
 
 # スコア計算処理
-point = 0
-frames.each_with_index do |frame, index|
-  if index == 9 # 10フレーム目の特別な処理
-    point += frame.sum # 10フレーム目は最大3投分を加算
-  elsif frame[0] == 10 # ストライクの場合
-    # 次の2投分の点を加算
-    point += 10 + next_shots(frames, index, 2).sum
-  elsif frame.sum == 10 # スペアの場合
-    # 次の1投分の点を加算
-    point += 10 + next_shots(frames, index, 1).sum
-  else
-    # 通常のフレームの得点をそのまま加算
-    point += frame.sum
+def calculate_score(frames)
+  point = 0
+
+  frames.each_with_index do |frame, index|
+    if index == 9 # 10フレーム目の特別な処理
+      point += frame.sum # 10フレーム目は最大3投分を加算
+    elsif frame[0] == 10 # ストライクの場合
+      # 次の2投分の点を加算
+      point += 10 + next_shots(frames, index, 2).sum
+    elsif frame.sum == 10 # スペアの場合
+      # 次の1投分の点を加算
+      point += 10 + next_shots(frames, index, 1).sum
+    else
+      # 通常のフレームの得点をそのまま加算
+      point += frame.sum
+    end
   end
+
+  point
 end
 
-puts point
-
+# 計算したスコアを表示
+puts calculate_score(frames)
