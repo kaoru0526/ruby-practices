@@ -1,11 +1,10 @@
 #!/usr/bin/env ruby
 
-# 引数で渡されたスコアを処理
 score = ARGV[0]
 scores = score.split(',')
 shots = scores.map { |s| s == 'X' ? 10 : s.to_i }
 
-# フレームを分割するメソッド
+
 def split_frames(shots)
   frames = []
   i = 0
@@ -28,12 +27,12 @@ def split_frames(shots)
   frames
 end
 
-# 次の投球を取得するメソッド
+
 def next_shots(frames, index, count)
   frames[index + 1..].flatten.first(count)
 end
 
-# スコアを計算するメソッド
+
 def calculate_score(frames)
   total_score = 0
 
