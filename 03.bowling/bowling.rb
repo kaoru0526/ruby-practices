@@ -9,21 +9,16 @@ def split_frames(shots)
   frames = []
   i = 0
 
-  while i < shots.size
-    if frames.size < 9
-      if shots[i] == 10
-        frames << [shots[i]]
-        i += 1
-      else
-        frames << shots[i, 2]
-        i += 2
-      end
+  while i < shots.size && frames.size < 9
+    if shots[i] == 10
+      frames << [shots[i]]
+      i += 1
     else
-      frames << shots[i..]
-      break
+      frames << shots[i, 2]
+      i += 2
     end
   end
-
+  frames << shots[i..] if i < shots.size  
   frames
 end
 
@@ -32,22 +27,24 @@ def next_shots(frames, index, count)
 end
 
 def calculate_score(frames)
-  total_score = 0
+  frames.each_with_index.sum do |frame, index|
+    score = frame.sum
 
-  frames.each_with_index do |frame, index|
-    total_score += if index == 9
-                     frame.sum
-                   elsif frame[0] == 10
-                     10 + next_shots(frames, index, 2).sum
-                   elsif frame.sum == 10
-                     10 + next_shots(frames, index, 1).sum
-                   else
-                     frame.sum
-                   end
+    if index == 9
+      score
+    else
+      if frame[0] == 10
+        next_shots_count = 2
+      elsif score == 10
+        next_shots_count = 1
+      else
+        next_shots_count = 0
+      end
+
+      score + next_shots(frames, index, next_shots_count).sum
+    end
   end
-
-  total_score
 end
 
-frames = split_frames(shots)
+frames = split_frames(shots)              
 puts calculate_score(frames)
