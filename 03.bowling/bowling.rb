@@ -28,18 +28,20 @@ end
 
 def calculate_score(frames)
   frames.each_with_index.sum do |frame, index|
-    if index == 9
-      frame.sum
-    else
-      score = if frame[0] == 10
-                10 + next_shots(frames, index, 2).sum
-              elsif frame.sum == 10
-                10 + next_shots(frames, index, 1).sum
-              else
-                frame.sum
-              end
+    frame_total = frame.sum
 
-      score
+    if index == 9
+      frame_total
+    else
+      bonus_shots = if frame[0] == 10
+                      2
+                    elsif frame_total == 10
+                      1
+                    else
+                      0
+                    end
+
+      frame_total + next_shots(frames, index, bonus_shots).sum
     end
   end
 end
