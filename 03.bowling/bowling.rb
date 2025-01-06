@@ -8,7 +8,6 @@ shots = scores.map { |s| s == 'X' ? 10 : s.to_i }
 def split_frames(shots)
   frames = []
   i = 0
-
   while i < shots.size && frames.size < 9
     if shots[i] == 10
       frames << [shots[i]]
@@ -28,18 +27,21 @@ end
 
 def calculate_score(frames)
   frames.each_with_index.sum do |frame, index|
-    if index == 9
-      frame.sum
-    else
-      bonus_shots = if frame[0] == 10
-                      2
-                    elsif frame.sum == 10
-                      1
-                    else
-                      0
-                    end
+    score = frame.sum
+    bonus_shots = if index == 9
+                    0
+                  elsif frame[0] == 10
+                    2
+                  elsif score == 10
+                    1
+                  else
+                    0
+                  end
 
-      frame.sum + next_shots(frames, index, bonus_shots).sum
+    if index == 9
+      score
+    else
+      score + next_shots(frames, index, bonus_shots).sum
     end
   end
 end
