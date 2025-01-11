@@ -5,7 +5,7 @@ score = ARGV[0]
 scores = score.split(',')
 shots = scores.map { |s| s == 'X' ? 10 : s.to_i }
 
-def split_frames(shots)
+def create_frames(shots)
   frames = []
   i = 0
   while i < shots.size && frames.size < 9
@@ -21,30 +21,28 @@ def split_frames(shots)
   frames
 end
 
-def next_shots(frames, index, count)
-  frames[index + 1..].flatten.first(count)
+def bonus_score(frames, index, bonus_shot)
+  frames[index + 1..].flatten.first(bonus_shot).sum
 end
 
 def calculate_score(frames)
   frames.each_with_index.sum do |frame, index|
-    score = frame.sum
-    bonus_shots = if index == 9
-                    0
-                  elsif frame[0] == 10
-                    2
-                  elsif score == 10
-                    1
-                  else
-                    0
-                  end
+    bonus_shot = if frame[0] == 10
+                   2
+                 elsif frame.sum == 10
+                   1
+                 else
+                   0
+                 end
 
     if index == 9
-      score
+      frame.sum
     else
-      score + next_shots(frames, index, bonus_shots).sum
+      frame.sum + bonus_score(frames, index, bonus_shot)
     end
   end
 end
 
-frames = split_frames(shots)
-puts calculate_score(frames)
+frames = create_frames(shots)
+total_score = calculate_score(frames)
+puts total_score
