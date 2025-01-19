@@ -34,12 +34,7 @@ def calculate_score(frames)
                  else
                    0
                  end
-
-    if index == 9
-      frame.sum
-    else
-      frame.sum + bonus_score(frames, index, bonus_shot)
-    end
+    frame.sum + (index == 9 ? 0 : bonus_score(frames, index, bonus_shot))
   end
 end
 
