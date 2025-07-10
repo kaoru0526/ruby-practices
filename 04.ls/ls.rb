@@ -2,11 +2,12 @@
 # frozen_string_literal: true
 
 def list_files(directory, columns)
-  files = Dir.entries(directory).sort - ['.', '..']
+  files = Dir.entries(directory).reject { |f| f.start_with?('.') }.sort
   print_files(files, columns)
 end
 
 def print_files(files, columns)
+  return if files.empty?
   rows = (files.size + columns - 1) / columns
   padded = files + [''] * (rows * columns - files.size)
   padded.each_slice(rows).to_a.transpose.each do |row|
