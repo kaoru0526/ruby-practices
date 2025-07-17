@@ -2,6 +2,7 @@
 # frozen_string_literal: true
 
 TAB_WIDTH = 8
+COLUMNS = 3
 
 def list_files(directory, columns)
   files = Dir.entries(directory).reject { |f| f.start_with?('.') }.sort
@@ -22,5 +23,4 @@ def print_files(files, columns)
   end
 end
 
-COLUMNS = 3
 list_files(Dir.pwd, COLUMNS)
