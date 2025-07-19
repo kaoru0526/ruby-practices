@@ -15,9 +15,9 @@ end
 
 opt.parse!(ARGV)
 
-def list_files(directory, columns, show_hidden_files: false)
+def list_files(directory, columns, show_all_files: false)
   files = Dir.entries(directory)
-  files.reject! { |f| f.start_with?('.') } unless show_hidden_files
+  files.reject! { |f| f.start_with?('.') } unless show_all_files
 
   files.sort!
   print_files(files, columns)
@@ -37,4 +37,4 @@ def print_files(files, columns)
   end
 end
 
-list_files(Dir.pwd, COLUMNS, show_hidden_files: options[:all])
+list_files(Dir.pwd, COLUMNS, show_all_files: options[:all])
