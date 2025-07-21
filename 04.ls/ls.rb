@@ -1,11 +1,25 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
+require 'optparse'
+
 TAB_WIDTH = 8
 COLUMNS = 3
 
-def list_files(directory, columns)
-  files = Dir.entries(directory).reject { |f| f.start_with?('.') }.sort
+options = {}
+opt = OptionParser.new
+
+opt.on('-a', '--all', 'Show hidden files') do
+  options[:all] = true
+end
+
+opt.parse!(ARGV)
+
+def list_files(directory, columns, show_all_files: false)
+  files = Dir.entries(directory)
+  files.reject! { |f| f.start_with?('.') } unless show_all_files
+
+  files.sort!
   print_files(files, columns)
 end
 
@@ -23,4 +37,4 @@ def print_files(files, columns)
   end
 end
 
-list_files(Dir.pwd, COLUMNS)
+list_files(Dir.pwd, COLUMNS, show_all_files: options[:all])
