@@ -6,24 +6,34 @@ require 'optparse'
 TAB_WIDTH = 8
 COLUMNS = 3
 
-options = {}
-opt = OptionParser.new
+options = { reverse: false }
 
-opt.on('-a', '--all', 'Show hidden files') do
-  options[:all] = true
+OptionParser.new do |opts|
+  opts.on('-r', '--reverse') do
+    options[:reverse] = true
+  end
+end.parse!
+
+class FileLister
+  def initialize(path: '.', reverse: false)
+    @path = path
+    @reverse = reverse
+  end
+
+  def execute
+    files = Dir.entries(@path).reject { |f| f.start_with?('.') }.sort
+    files.reverse! if @reverse
+    print_list(files)
+  end
+
+  private
+
+  def print_list(files)
+    display_format(files, COLUMNS)
+  end
 end
 
-opt.parse!(ARGV)
-
-def list_files(directory, columns, show_all_files: false)
-  files = Dir.entries(directory)
-  files.reject! { |f| f.start_with?('.') } unless show_all_files
-
-  files.sort!
-  print_files(files, columns)
-end
-
-def print_files(files, columns)
+def display_format(files, columns)
   return if files.empty?
 
   max_length = files.map(&:size).max
@@ -37,4 +47,5 @@ def print_files(files, columns)
   end
 end
 
-list_files(Dir.pwd, COLUMNS, show_all_files: options[:all])
+lister = FileLister.new(path: Dir.pwd, reverse: options[:reverse])
+lister.execute
