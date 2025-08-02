@@ -9,6 +9,7 @@ OWNER_SHIFT = 6
 GROUP_SHIFT = 3
 OTHER_SHIFT = 0
 SIZE_COLUMN_WIDTH = 6
+COLUMN_PADDING = 6
 
 options = { long: false }
 OptionParser.new do |opts|
@@ -44,7 +45,7 @@ def format_to_columns(display_strings, columns)
   (0...rows).each do |r|
     row = columns_arr.map.with_index do |col, i|
       entry = col[r] || ''
-      entry.ljust(col_widths[i] + 2)
+      entry.ljust(col_widths[i] + COLUMN_PADDING)
     end.join.rstrip
     puts row
   end
