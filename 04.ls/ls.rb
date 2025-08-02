@@ -3,49 +3,64 @@
 
 require 'optparse'
 
-TAB_WIDTH = 8
 COLUMNS = 3
+LSB_3_MASK = 0b111 # 下位3ビットだけを取り出すフィルター（owner/group/other パーミッション用）
+OWNER_SHIFT = 6
+GROUP_SHIFT = 3
+OTHER_SHIFT = 0
+SIZE_COLUMN_WIDTH = 6
 
-options = { reverse: false }
-
+options = { long: false }
 OptionParser.new do |opts|
-  opts.on('-r', '--reverse') do
-    options[:reverse] = true
-  end
-end.parse!
+  opts.on('-l', '--long', '長い形式で表示（3列に縦詰め）') { options[:long] = true }
+end.parse!(ARGV)
 
-class FileLister
-  def initialize(path: '.', reverse: false)
-    @path = path
-    @reverse = reverse
-  end
+files = Dir.entries('.').reject { |f| f.start_with?('.') }.sort
 
-  def execute
-    files = Dir.entries(@path).reject { |f| f.start_with?('.') }.sort
-    files.reverse! if @reverse
-    print_list(files)
-  end
+def format_mode(path)
+  stat = File.stat(path)
+  type_char = File.directory?(path) ? 'd' : '-'
 
-  private
+  perms_map = {
+    0 => '---', 1 => '--x', 2 => '-w-', 3 => '-wx',
+    4 => 'r--', 5 => 'r-x', 6 => 'rw-', 7 => 'rwx'
+  }
 
-  def print_list(files)
-    display_format(files, COLUMNS)
+  mode = stat.mode
+  owner = perms_map[(mode >> OWNER_SHIFT) & LSB_3_MASK]
+  group = perms_map[(mode >> GROUP_SHIFT) & LSB_3_MASK]
+  other = perms_map[mode & LSB_3_MASK]
+
+  "#{type_char}#{owner}#{group}#{other}"
+end
+
+def format_to_columns(display_strings, columns)
+  rows = (display_strings.size + columns - 1) / columns
+  padded = display_strings + [''] * (rows * columns - display_strings.size)
+  columns_arr = padded.each_slice(rows).to_a
+
+  col_widths = columns_arr.map { |col| col.map(&:size).max || 0 }
+
+  (0...rows).each do |r|
+    row = columns_arr.map.with_index do |col, i|
+      entry = col[r] || ''
+      entry.ljust(col_widths[i] + 2)
+    end.join.rstrip
+    puts row
   end
 end
 
-def display_format(files, columns)
-  return if files.empty?
+if options[:long]
 
-  max_length = files.map(&:size).max
-  column_width = ((max_length + TAB_WIDTH) / TAB_WIDTH) * TAB_WIDTH
-
-  rows = (files.size + columns - 1) / columns
-  padded_files = files + [''] * (rows * columns - files.size)
-
-  padded_files.each_slice(rows).to_a.transpose.each do |row|
-    puts row.map { |f| f.ljust(column_width) }.join
+  long_lines = files.map do |f|
+    stat = File.stat(f)
+    perms = format_mode(f)
+    size = stat.size.to_s.rjust(SIZE_COLUMN_WIDTH)
+    date = stat.mtime.strftime('%b %e %H:%M')
+    "#{perms} #{size} #{date} #{f}"
   end
-end
+  format_to_columns(long_lines, COLUMNS)
+else
 
-lister = FileLister.new(path: Dir.pwd, reverse: options[:reverse])
-lister.execute
+  format_to_columns(files, COLUMNS)
+end
