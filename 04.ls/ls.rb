@@ -2,6 +2,7 @@
 # frozen_string_literal: true
 
 require 'optparse'
+require 'etc'
 
 COLUMNS = 3
 LSB_3_MASK = 0b111 # 下位3ビットだけを取り出すフィルター（owner/group/other パーミッション用）
@@ -13,7 +14,7 @@ COLUMN_PADDING = 6
 
 options = { long: false }
 OptionParser.new do |opts|
-  opts.on('-l', '--long', '長い形式で表示（3列に縦詰め）') { options[:long] = true }
+  opts.on('-l', '--long', '長い形式でls -lの表示') { options[:long] = true }
 end.parse!(ARGV)
 
 files = Dir.entries('.').reject { |f| f.start_with?('.') }.sort
@@ -36,6 +37,8 @@ def format_mode(path)
 end
 
 def format_to_columns(display_strings, columns)
+  return if display_strings.empty?
+
   rows = (display_strings.size + columns - 1) / columns
   padded = display_strings + [''] * (rows * columns - display_strings.size)
   columns_arr = padded.each_slice(rows).to_a
@@ -52,15 +55,19 @@ def format_to_columns(display_strings, columns)
 end
 
 if options[:long]
+  total_blocks = files.sum { |f| File.stat(f).blocks }
+  puts "total #{total_blocks}"
 
-  long_lines = files.map do |f|
+  files.each do |f|
     stat = File.stat(f)
     perms = format_mode(f)
+    links = stat.nlink.to_s.rjust(2)
+    user = Etc.getpwuid(stat.uid).name
+    group = Etc.getgrgid(stat.gid).name
     size = stat.size.to_s.rjust(SIZE_COLUMN_WIDTH)
     date = stat.mtime.strftime('%b %e %H:%M')
-    "#{perms} #{size} #{date} #{f}"
+    puts "#{perms} #{links} #{user}  #{group}  #{size} #{date} #{f}"
   end
-  format_to_columns(long_lines, COLUMNS)
 else
 
   format_to_columns(files, COLUMNS)
