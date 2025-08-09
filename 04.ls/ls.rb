@@ -11,6 +11,7 @@ GROUP_SHIFT = 3
 OTHER_SHIFT = 0
 SIZE_COLUMN_WIDTH = 6
 COLUMN_PADDING = 6
+LINKS_COLUMN_WIDTH = 2
 
 options = { long: false }
 OptionParser.new do |opts|
@@ -61,7 +62,7 @@ if options[:long]
   files.each do |f|
     stat = File.stat(f)
     perms = format_mode(f)
-    links = stat.nlink.to_s.rjust(2)
+    links = stat.nlink.to_s.rjust(LINKS_COLUMN_WIDTH)
     user = Etc.getpwuid(stat.uid).name
     group = Etc.getgrgid(stat.gid).name
     size = stat.size.to_s.rjust(SIZE_COLUMN_WIDTH)
