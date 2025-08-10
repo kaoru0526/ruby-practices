@@ -66,7 +66,7 @@ if options[:long]
     user = Etc.getpwuid(stat.uid).name
     group = Etc.getgrgid(stat.gid).name
     size = stat.size.to_s.rjust(SIZE_COLUMN_WIDTH)
-    date = stat.mtime.strftime('%m %e %H:%M')
+    date = stat.mtime.strftime('%-m %e %H:%M')
     puts "#{perms} #{links} #{user}  #{group}  #{size} #{date} #{f}"
   end
 else
