@@ -13,6 +13,11 @@ SIZE_COLUMN_WIDTH = 6
 COLUMN_PADDING = 6
 LINKS_COLUMN_WIDTH = 2
 
+PERMS_MAP = {
+  0 => '---', 1 => '--x', 2 => '-w-', 3 => '-wx',
+  4 => 'r--', 5 => 'r-x', 6 => 'rw-', 7 => 'rwx'
+}.freeze
+
 def parse_options(argv)
   options = { all: false, reverse: false, long: false }
 
@@ -30,19 +35,25 @@ def print_total_blocks(files)
   puts "total #{total}"
 end
 
-def long_line(file)
-  stat = File.stat(file)
-  perms = format_mode(file)
-  links = stat.nlink.to_s.rjust(LINKS_COLUMN_WIDTH)
-  user = Etc.getpwuid(stat.uid).name
-  group = Etc.getgrgid(stat.gid).name
-  size = stat.size.to_s.rjust(SIZE_COLUMN_WIDTH)
-  date = stat.mtime.strftime('%-m %e %H:%M')
-  "#{perms} #{links} #{user}  #{group}  #{size} #{date} #{file}"
+def long_fields(stat, file)
+  [
+    format_mode(file),
+    stat.nlink.to_s.rjust(LINKS_COLUMN_WIDTH),
+    Etc.getpwuid(stat.uid).name,
+    Etc.getgrgid(stat.gid).name,
+    stat.size.to_s.rjust(SIZE_COLUMN_WIDTH),
+    stat.mtime.strftime('%-m %e %H:%M'),
+    file
+  ]
 end
 
-def print_long_line(_file)
-  puts long_line(f)
+def long_line(file)
+  stat = File.stat(file)
+  long_fields(stat, file).join(' ')
+end
+
+def print_long_line(file)
+  puts long_line(file)
 end
 
 def main
@@ -57,21 +68,22 @@ def main
   end
 end
 
+def prepare_columns(entries, columns, rows)
+  padded = entries.map(&:to_s) + Array.new([rows * columns - entries.size, 0].max, '')
+  cols   = padded.each_slice(rows).to_a
+  widths = cols.map { |col| (col.max_by(&:size) || '').size + COLUMN_PADDING }
+
+  [cols.transpose, widths]
+end
+
 def format_to_columns(display_strings, columns)
   return if display_strings.empty?
-  
+
   rows = (display_strings.size + columns - 1) / columns
-  padded = display_strings + [''] * (rows * columns - display_strings.size)
-  columns_arr = padded.each_slice(rows).to_a
+  row_arrays, ljust_widths = prepare_columns(display_strings, columns, rows)
 
-  col_widths = columns_arr.map { |col| col.map(&:size).max || 0 }
-
-  (0...rows).each do |r|
-    row = columns_arr.map.with_index do |col, i|
-      entry = col[r] || ''
-      entry.ljust(col_widths[i] + COLUMN_PADDING)
-    end.join.rstrip
-    puts row
+  row_arrays.each do |row|
+    puts row.zip(ljust_widths).map { |val, w| val.ljust(w) }.join.rstrip
   end
 end
 
@@ -81,19 +93,14 @@ end
 
 def format_mode(path)
   stat = File.stat(path)
-  type_char = File.directory?(path) ? 'd' : '-'
-
-  perms_map = {
-    0 => '---', 1 => '--x', 2 => '-w-', 3 => '-wx',
-    4 => 'r--', 5 => 'r-x', 6 => 'rw-', 7 => 'rwx'
-  }
-
   mode = stat.mode
-  owner = perms_map[(mode >> OWNER_SHIFT) & LSB_3_MASK]
-  group = perms_map[(mode >> GROUP_SHIFT) & LSB_3_MASK]
-  other = perms_map[mode & LSB_3_MASK]
-
-  "#{type_char}#{owner}#{group}#{other}"
+  type = File.directory?(path) ? 'd' : '-'
+  [
+    type,
+    PERMS_MAP[(mode >> OWNER_SHIFT) & LSB_3_MASK],
+    PERMS_MAP[(mode >> GROUP_SHIFT) & LSB_3_MASK],
+    PERMS_MAP[mode & LSB_3_MASK]
+  ].join
 end
 
 def list_files(directory, show_all_files: false, reverse: false)
