@@ -35,7 +35,8 @@ def print_total_blocks(files)
   puts "total #{total}"
 end
 
-def long_fields(stat, file)
+def long_fields(file)
+  stat = File.stat(file)
   [
     format_mode(file),
     stat.nlink.to_s.rjust(LINKS_COLUMN_WIDTH),
@@ -48,12 +49,7 @@ def long_fields(stat, file)
 end
 
 def long_line(file)
-  stat = File.stat(file)
-  long_fields(stat, file).join(' ')
-end
-
-def print_long_line(file)
-  puts long_line(file)
+  long_fields(file).join(' ')
 end
 
 def main
@@ -62,13 +58,13 @@ def main
 
   if options[:long]
     print_total_blocks(files)
-    files.each { |f| print_long_line(f) }
+    files.each { |f| puts long_line(f) }
   else
-    print_files(files, COLUMNS)
+    print_files(files)
   end
 end
 
-def prepare_columns(entries, columns, rows)
+def split_rows_and_widths(entries, columns, rows)
   padded = entries.map(&:to_s) + Array.new([rows * columns - entries.size, 0].max, '')
   cols   = padded.each_slice(rows).to_a
   widths = cols.map { |col| (col.max_by(&:size) || '').size + COLUMN_PADDING }
@@ -76,25 +72,25 @@ def prepare_columns(entries, columns, rows)
   [cols.transpose, widths]
 end
 
-def format_to_columns(display_strings, columns)
-  return if display_strings.empty?
+def format_to_columns(display_strings)
+  return [] if display_strings.empty?
 
-  rows = (display_strings.size + columns - 1) / columns
-  row_arrays, ljust_widths = prepare_columns(display_strings, columns, rows)
+  rows = (display_strings.size + COLUMNS - 1) / COLUMNS
+  row_arrays, ljust_widths = split_rows_and_widths(display_strings, COLUMNS, rows)
 
-  row_arrays.each do |row|
-    puts row.zip(ljust_widths).map { |val, w| val.ljust(w) }.join.rstrip
+  row_arrays.map do |row|
+    row.zip(ljust_widths).map { |val, w| val.ljust(w) }.join.rstrip
   end
 end
 
-def print_files(files, columns)
-  format_to_columns(files, columns)
+def print_files(files)
+  format_to_columns(files).each { |line| puts line }
 end
 
-def format_mode(path)
-  stat = File.stat(path)
+def format_mode(file)
+  stat = File.stat(file)
   mode = stat.mode
-  type = File.directory?(path) ? 'd' : '-'
+  type = File.directory?(file) ? 'd' : '-'
   [
     type,
     PERMS_MAP[(mode >> OWNER_SHIFT) & LSB_3_MASK],
