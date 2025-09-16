@@ -13,63 +13,98 @@ SIZE_COLUMN_WIDTH = 6
 COLUMN_PADDING = 6
 LINKS_COLUMN_WIDTH = 2
 
-options = { long: false }
-OptionParser.new do |opts|
-  opts.on('-l', '--long', '長い形式でls -lの表示') { options[:long] = true }
-end.parse!(ARGV)
+PERMS_MAP = {
+  0 => '---', 1 => '--x', 2 => '-w-', 3 => '-wx',
+  4 => 'r--', 5 => 'r-x', 6 => 'rw-', 7 => 'rwx'
+}.freeze
 
-files = Dir.entries('.').reject { |f| f.start_with?('.') }.sort
+def parse_options(argv)
+  options = { all: false, reverse: false, long: false }
 
-def format_mode(path)
-  stat = File.stat(path)
-  type_char = File.directory?(path) ? 'd' : '-'
+  OptionParser.new do |opts|
+    opts.on('-a', '--all', 'Show hidden files', '隠しファイルを表示する') { options[:all] = true }
+    opts.on('-r', '--reverse', '逆順で表示') { options[:reverse] = true }
+    opts.on('-l', '--long', '長い形式で表示（3列に縦詰め）') { options[:long] = true }
+  end.parse!(argv)
 
-  perms_map = {
-    0 => '---', 1 => '--x', 2 => '-w-', 3 => '-wx',
-    4 => 'r--', 5 => 'r-x', 6 => 'rw-', 7 => 'rwx'
-  }
+  options
+end
 
+def print_total_blocks(files)
+  total = files.sum { |f| File.stat(f).blocks }
+  puts "total #{total}"
+end
+
+def long_fields(file)
+  stat = File.stat(file)
+  [
+    format_mode(file),
+    stat.nlink.to_s.rjust(LINKS_COLUMN_WIDTH),
+    Etc.getpwuid(stat.uid).name,
+    Etc.getgrgid(stat.gid).name,
+    stat.size.to_s.rjust(SIZE_COLUMN_WIDTH),
+    stat.mtime.strftime('%-m %e %H:%M'),
+    file
+  ]
+end
+
+def long_line(file)
+  long_fields(file).join(' ')
+end
+
+def main
+  options = parse_options(ARGV)
+  files = list_files('.', show_all_files: options[:all], reverse: options[:reverse]) # '.' = カレントディレクトリ
+
+  if options[:long]
+    print_total_blocks(files)
+    files.each { |f| puts long_line(f) }
+  else
+    print_files(files)
+  end
+end
+
+def split_rows_and_widths(entries, columns, rows)
+  padded = entries.map(&:to_s) + Array.new([rows * columns - entries.size, 0].max, '')
+  cols   = padded.each_slice(rows).to_a
+  widths = cols.map { |col| (col.max_by(&:size) || '').size + COLUMN_PADDING }
+
+  [cols.transpose, widths]
+end
+
+def format_to_columns(display_strings)
+  return [] if display_strings.empty?
+
+  rows = (display_strings.size + COLUMNS - 1) / COLUMNS
+  row_arrays, ljust_widths = split_rows_and_widths(display_strings, COLUMNS, rows)
+
+  row_arrays.map do |row|
+    row.zip(ljust_widths).map { |val, w| val.ljust(w) }.join.rstrip
+  end
+end
+
+def print_files(files)
+  format_to_columns(files).each { |line| puts line }
+end
+
+def format_mode(file)
+  stat = File.stat(file)
   mode = stat.mode
-  owner = perms_map[(mode >> OWNER_SHIFT) & LSB_3_MASK]
-  group = perms_map[(mode >> GROUP_SHIFT) & LSB_3_MASK]
-  other = perms_map[mode & LSB_3_MASK]
-
-  "#{type_char}#{owner}#{group}#{other}"
+  type = File.directory?(file) ? 'd' : '-'
+  [
+    type,
+    PERMS_MAP[(mode >> OWNER_SHIFT) & LSB_3_MASK],
+    PERMS_MAP[(mode >> GROUP_SHIFT) & LSB_3_MASK],
+    PERMS_MAP[mode & LSB_3_MASK]
+  ].join
 end
 
-def format_to_columns(display_strings, columns)
-  return if display_strings.empty?
-
-  rows = (display_strings.size + columns - 1) / columns
-  padded = display_strings + [''] * (rows * columns - display_strings.size)
-  columns_arr = padded.each_slice(rows).to_a
-
-  col_widths = columns_arr.map { |col| col.map(&:size).max || 0 }
-
-  (0...rows).each do |r|
-    row = columns_arr.map.with_index do |col, i|
-      entry = col[r] || ''
-      entry.ljust(col_widths[i] + COLUMN_PADDING)
-    end.join.rstrip
-    puts row
-  end
+def list_files(directory, show_all_files: false, reverse: false)
+  entries = Dir.entries(directory)
+  files = show_all_files ? entries : entries.reject { |f| f.start_with?('.') }
+  files.sort!
+  files.reverse! if reverse
+  files
 end
 
-if options[:long]
-  total_blocks = files.sum { |f| File.stat(f).blocks }
-  puts "total #{total_blocks}"
-
-  files.each do |f|
-    stat = File.stat(f)
-    perms = format_mode(f)
-    links = stat.nlink.to_s.rjust(LINKS_COLUMN_WIDTH)
-    user = Etc.getpwuid(stat.uid).name
-    group = Etc.getgrgid(stat.gid).name
-    size = stat.size.to_s.rjust(SIZE_COLUMN_WIDTH)
-    date = stat.mtime.strftime('%-m %e %H:%M')
-    puts "#{perms} #{links} #{user}  #{group}  #{size} #{date} #{f}"
-  end
-else
-
-  format_to_columns(files, COLUMNS)
-end
+main
