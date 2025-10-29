@@ -10,21 +10,21 @@ def parse_options!(argv)
     o.on('-l', 'lines')  { opts[:l] = true }
     o.on('-w', 'words')  { opts[:w] = true }
     o.on('-c', 'bytes')  { opts[:c] = true }
-  end.parse!(argv)  # ← 残りは argv(files) に残る
+  end.parse!(argv)
 
   opts = opts.transform_values { true } if opts.values.none?
   opts
 end
-  
-def count_text(content)
+
+def count_lwb(content)
   {
     l: content.count("\n"),
-    w: content.scan(/\S+/).size,
-    c: content.bytesize 
+    w: content.split.size,
+    c: content.bytesize
   }
 end
 
-def total_counts(results)
+def sum_counts(results)
   totals = { l: 0, w: 0, c: 0 }
   results.each do |r|
     totals[:l] += r[:counts][:l]
@@ -36,9 +36,9 @@ end
 
 MIN_FIELD_WIDTH = 8
 
-def max_widths(keys, rows, total_counts: nil, min_width: MIN_FIELD_WIDTH)
+def max_widths(keys, rows, sum_counts: nil, min_width: MIN_FIELD_WIDTH)
   all = rows.map { |r| r[:counts] }
-  all << total_counts if total_counts
+  all << sum_counts if sum_counts
   keys.to_h do |k|
     max_digits = all.map { |h| h[k].to_s.size }.max || 1
     [k, [max_digits, min_width].max]
@@ -51,28 +51,26 @@ def format_line(keys, widths, counts, name = nil)
 end
 
 opts = parse_options!(ARGV)
-keys = [:l, :w, :c].select { |k| opts[k] }  # ← 出力する列の順序をここで決める
+keys = %i[l w c].select { |k| opts[k] }
 
 if ARGV.empty?
-  data   = STDIN.read
-  stdin_counts = count_text(data)
- 
+  data = $stdin.read
+  stdin_counts = count_lwb(data)
+
   widths = max_widths(keys, [{ counts: stdin_counts }])
   puts format_line(keys, widths, stdin_counts)
 
 else
   results = ARGV.map do |name|
     content = File.binread(name)
-    { name: name, counts: count_text(content) }
+    { name: name, counts: count_lwb(content) }
   end
 
-  totals = results.size >= 2 ? total_counts(results) : nil
-  widths = max_widths(keys, results, total_counts: totals)
+  totals = results.size >= 2 ? sum_counts(results) : nil
+  widths = max_widths(keys, results, sum_counts: totals)
 
   results.each do |r|
     puts format_line(keys, widths, r[:counts], r[:name])
   end
-  if totals
-    puts format_line(keys, widths, totals, 'total')
-  end
+  puts format_line(keys, widths, totals, 'total') if totals
 end
